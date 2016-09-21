@@ -24,7 +24,7 @@ class ScheduledBakeRunner(enabled: Boolean, prism: Prism, eventBus: EventBus)(im
                 val theBake = Bakes.create(recipe, buildNumber, startedBy = "scheduler")
 
                 Logger.info(s"Starting scheduled bake: ${theBake.bakeId}")
-                PackerRunner.createImage(theBake, prism, eventBus)
+              // TODO PackerRunner.createImage(theBake, prism, eventBus)
               case None =>
                 Logger.warn(s"Failed to get the next build number for recipe $recipeId")
             }

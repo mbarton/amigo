@@ -93,7 +93,7 @@ class AppComponents(context: Context)
   val baseImageController = new BaseImageController(googleAuthConfig, messagesApi)
   val roleController = new RoleController(googleAuthConfig)
   val recipeController = new RecipeController(bakeScheduler, googleAuthConfig, messagesApi)
-  val bakeController = new BakeController(eventsSource, prism, googleAuthConfig, messagesApi)
+  val bakeController = new BakeController(eventsSource, prism, wsClient, googleAuthConfig, messagesApi)
   val authController = new Auth(googleAuthConfig)(wsClient)
   val assets = new controllers.Assets(httpErrorHandler)
   lazy val router: Router = new Routes(

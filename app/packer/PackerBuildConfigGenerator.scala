@@ -1,9 +1,10 @@
 package packer
 
-import java.nio.file.{ Paths, Path }
+import java.nio.file.{ Path, Paths }
 
-import models.packer.{ PackerProvisionerConfig, PackerBuilderConfig, PackerBuildConfig }
-import models.{ RoleId, Bake, Recipe }
+import cats.data.Reader
+import models.packer.{ PackerBuildConfig, PackerBuilderConfig, PackerProvisionerConfig }
+import models.Bake
 
 object PackerBuildConfigGenerator {
 
@@ -14,8 +15,7 @@ object PackerBuildConfigGenerator {
    *  - runs Ansible to install the required roles
    *  - tags the resulting AMI with the recipe ID and build number
    */
-  def generatePackerBuildConfig(
-    bake: Bake, playbookFile: Path, awsAccountNumbers: Seq[String])(implicit packerConfig: PackerConfig): PackerBuildConfig = {
+  def generatePackerBuildConfig(bake: Bake, playbookFile: Path, awsAccountNumbers: Seq[String]): Reader[PackerConfig, PackerBuildConfig] = Reader { packerConfig =>
     val variables = Map(
       "recipe" -> bake.recipe.id.value,
       "base_image_ami_id" -> bake.recipe.baseImage.amiId.value,
