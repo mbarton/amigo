@@ -1,13 +1,11 @@
 package schedule
 
-import data.{ Bakes, Recipes, Dynamo }
-import event.EventBus
-import models.RecipeId
-import packer.{ PackerRunner, PackerConfig }
+import data.{ Bakes, Dynamo, Recipes }
+import models.{ Bake, RecipeId }
+import packer.BuildService.{ CreateImage, CreateImageContext }
 import play.api.Logger
-import prism.Prism
 
-class ScheduledBakeRunner(enabled: Boolean, prism: Prism, eventBus: EventBus)(implicit dynamo: Dynamo, packerConfig: PackerConfig) {
+class ScheduledBakeRunner(enabled: Boolean, createImage: Bake => CreateImage, createImageContext: CreateImageContext)(implicit dynamo: Dynamo) {
 
   def bake(recipeId: RecipeId): Unit = {
     if (!enabled) {
@@ -24,7 +22,7 @@ class ScheduledBakeRunner(enabled: Boolean, prism: Prism, eventBus: EventBus)(im
                 val theBake = Bakes.create(recipe, buildNumber, startedBy = "scheduler")
 
                 Logger.info(s"Starting scheduled bake: ${theBake.bakeId}")
-              // TODO PackerRunner.createImage(theBake, prism, eventBus)
+                createImage(theBake).run(createImageContext)
               case None =>
                 Logger.warn(s"Failed to get the next build number for recipe $recipeId")
             }

@@ -16,12 +16,15 @@ import play.api.i18n.I18nComponents
 import play.api.libs.iteratee.Concurrent
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.routing.Router
+
+import ansible.PlaybookGenerator
 import data.{ Dynamo, Recipes }
 import prism.Prism
-import packer.PackerConfig
+import packer._
 import event.{ ActorSystemWrapper, BakeEvent, Behaviours }
 import schedule.{ BakeScheduler, ScheduledBakeRunner }
 import controllers._
+import packer.BuildService.CreateImageContext
 
 import router.Routes
 
@@ -78,11 +81,19 @@ class AppComponents(context: Context)
     instanceProfile = configuration.getString("packer.instanceProfile")
   )
 
-  val prism = new Prism(wsClient)
+  val createImageContext = CreateImageContext(eventBus, packerConfig, wsClient)
+  val createImage = BuildService.createImage(
+    Prism.findAllAWSAccountNumbers,
+    PlaybookGenerator.generatePlaybook,
+    PackerBuildConfigGenerator.generatePackerBuildConfig,
+    TempFiles.writePlaybookToTempFile,
+    TempFiles.writePackerBuildConfigToTempFile,
+    PackerRunner.executePacker
+  ) _
 
   val scheduledBakeRunner = {
     val enabled = identity.stage == "PROD" // don't run scheduled bakes on dev machines
-    new ScheduledBakeRunner(enabled, prism, eventBus)
+    new ScheduledBakeRunner(enabled, createImage, createImageContext)
   }
   val bakeScheduler = new BakeScheduler(scheduledBakeRunner)
 
@@ -93,7 +104,7 @@ class AppComponents(context: Context)
   val baseImageController = new BaseImageController(googleAuthConfig, messagesApi)
   val roleController = new RoleController(googleAuthConfig)
   val recipeController = new RecipeController(bakeScheduler, googleAuthConfig, messagesApi)
-  val bakeController = new BakeController(eventsSource, prism, wsClient, googleAuthConfig, messagesApi)
+  val bakeController = new BakeController(eventsSource, createImage, createImageContext, googleAuthConfig, messagesApi)
   val authController = new Auth(googleAuthConfig)(wsClient)
   val assets = new controllers.Assets(httpErrorHandler)
   lazy val router: Router = new Routes(

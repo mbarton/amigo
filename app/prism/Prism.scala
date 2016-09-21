@@ -1,18 +1,18 @@
 package prism
 
+import cats.data.ReaderT
 import play.api.Logger
-import play.api.libs.json.{ JsValue, JsError, JsSuccess, Json }
+import play.api.libs.json.{ JsError, JsSuccess, JsValue, Json }
 import play.api.libs.ws.WSClient
-import scala.concurrent.ExecutionContext.Implicits.global
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class Prism(ws: WSClient) {
-  import Prism._
+object Prism {
 
   private val PrismUrl = "http://prism.gutools.co.uk/sources?resource=instance&origin.vendor=aws"
 
-  def findAllAWSAccountNumbers(): Future[Seq[String]] = {
+  val findAllAWSAccountNumbers: ReaderT[Future, WSClient, Seq[String]] = ReaderT { ws =>
     ws.url(PrismUrl).get().map { resp =>
       extractAccountNumbers(resp.json) getOrElse {
         Logger.warn(s"Failed to parse Prism response. Status code = ${resp.status}, Body = ${resp.body}")
@@ -20,10 +20,6 @@ class Prism(ws: WSClient) {
       }
     }
   }
-
-}
-
-object Prism {
 
   case class Origin(accountNumber: String)
   implicit val originReads = Json.reads[Origin]

@@ -12,7 +12,7 @@ import play.api.Logger
 import play.api.libs.ws.WSClient
 
 import scala.concurrent.ExecutionContext.Implicits.global // TODO this should really be in the context
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.Future
 import scala.util.Try
 
 object BuildService {
@@ -20,21 +20,21 @@ object BuildService {
   case class CreateImageContext(
     eventBus: EventBus,
     packerConfig: PackerConfig,
-    wsClient: WSClient,
-    ec: ExecutionContext)
+    wsClient: WSClient)
+
+  type CreateImage = ReaderT[Future, CreateImageContext, BuildResult]
 
   /**
    * Starts a Packer process to create an image using the given recipe.
    *
    * @return a Future of the result of building the image
    */
-  def createImage(bake: Bake,
-    findAllAWSAccountNumbers: ReaderT[Future, WSClient, Seq[String]],
+  def createImage(findAllAWSAccountNumbers: ReaderT[Future, WSClient, Seq[String]],
     generatePlaybook: Recipe => String,
     generatePackerBuildConfig: (Bake, Path, Seq[String]) => Reader[PackerConfig, PackerBuildConfig],
     writePlaybookToTempFile: (String, RecipeId) => Try[Path],
     writePackerConfigToTempFile: (PackerBuildConfig, RecipeId) => Try[Path],
-    executePacker: PackerInput => ReaderT[Future, EventBus, Int]): ReaderT[Future, CreateImageContext, BuildResult] = {
+    executePacker: PackerInput => ReaderT[Future, EventBus, Int])(bake: Bake): CreateImage = {
 
     for {
       playbookYaml <- ReaderT.pure[Future, CreateImageContext, String](generatePlaybook(bake.recipe))

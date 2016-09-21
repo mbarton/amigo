@@ -5,7 +5,8 @@ import org.quartz.CronScheduleBuilder._
 import org.quartz.JobBuilder._
 import org.quartz.TriggerBuilder._
 import org.quartz.impl.StdSchedulerFactory
-import org.quartz.{ TriggerKey, JobKey, JobDataMap }
+import org.quartz.{ JobDataMap, JobKey, TriggerKey }
+import packer.BuildService.{ CreateImage, CreateImageContext }
 import play.api.Logger
 
 class BakeScheduler(scheduledBakeRunner: ScheduledBakeRunner) {
