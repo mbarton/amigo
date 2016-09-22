@@ -83,10 +83,10 @@ class AppComponents(context: Context)
 
   val createImageContext = CreateImageContext(eventBus, packerConfig, wsClient)
   val createImage = BuildService.createImage(
-    Prism.findAllAWSAccountNumbers,
     PlaybookGenerator.generatePlaybook,
-    PackerBuildConfigGenerator.generatePackerBuildConfig,
     TempFiles.writePlaybookToTempFile,
+    Prism.findAllAWSAccountNumbers,
+    PackerBuildConfigGenerator.generatePackerBuildConfig,
     TempFiles.writePackerBuildConfigToTempFile,
     PackerRunner.executePacker
   ) _

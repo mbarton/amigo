@@ -22,29 +22,53 @@ object BuildService {
     packerConfig: PackerConfig,
     wsClient: WSClient)
 
-  type CreateImage = ReaderT[Future, CreateImageContext, BuildResult]
+  type UseContext[A] = ReaderT[Future, CreateImageContext, A]
+  type CreateImage = UseContext[BuildResult]
 
   /**
    * Starts a Packer process to create an image using the given recipe.
    *
    * @return a Future of the result of building the image
    */
-  def createImage(findAllAWSAccountNumbers: ReaderT[Future, WSClient, Seq[String]],
+  def createImage(
     generatePlaybook: Recipe => String,
-    generatePackerBuildConfig: (Bake, Path, Seq[String]) => Reader[PackerConfig, PackerBuildConfig],
     writePlaybookToTempFile: (String, RecipeId) => Try[Path],
+    findAllAWSAccountNumbers: ReaderT[Future, WSClient, Seq[String]],
+    generatePackerBuildConfig: (Bake, Path, Seq[String]) => Reader[PackerConfig, PackerBuildConfig],
     writePackerConfigToTempFile: (PackerBuildConfig, RecipeId) => Try[Path],
     executePacker: PackerInput => ReaderT[Future, EventBus, Int])(bake: Bake): CreateImage = {
 
+    // TODO This nasty wiring could be moved out to AppComponents.
+    // In that case we would change all the arguments to have type (...) => UseContext[...].
+    // Note that this would make the test for this method even more cumbersome than it already is.
+
+    val genPlaybook: Recipe => UseContext[String] = recipe => ReaderT.pure[Future, CreateImageContext, String](generatePlaybook(recipe))
+
+    val writePlaybook: String => UseContext[Path] = playbookYaml =>
+      ReaderT.lift[Future, CreateImageContext, Path](Future.fromTry(writePlaybookToTempFile(playbookYaml, bake.recipe.id)))
+
+    val findAccountNumbers: UseContext[Seq[String]] = findAllAWSAccountNumbers.local[CreateImageContext](_.wsClient)
+
+    val genPackerBuildConfig: (Bake, Path, Seq[String]) => UseContext[PackerBuildConfig] = (bake, path, awsAccounts) =>
+      generatePackerBuildConfig(bake, path, awsAccounts).local[CreateImageContext](_.packerConfig).lift[Future]
+
+    val writePackerBuildConfig: PackerBuildConfig => UseContext[Path] = packerBuildConfig =>
+      ReaderT.lift[Future, CreateImageContext, Path](Future.fromTry(writePackerConfigToTempFile(packerBuildConfig, bake.recipe.id)))
+
+    val runPacker: PackerInput => UseContext[Int] = packerInput =>
+      executePacker(packerInput).local[CreateImageContext](_.eventBus)
+
     for {
-      playbookYaml <- ReaderT.pure[Future, CreateImageContext, String](generatePlaybook(bake.recipe))
-      playbook <- ReaderT.lift[Future, CreateImageContext, Path](Future.fromTry(writePlaybookToTempFile(playbookYaml, bake.recipe.id)))
-      awsAccountNumbers <- findAllAWSAccountNumbers.local[CreateImageContext](_.wsClient)
+      playbookYaml <- genPlaybook(bake.recipe)
+      playbook <- writePlaybook(playbookYaml)
+      awsAccountNumbers <- findAccountNumbers
       _ = Logger.info(s"AMI will be shared with the following AWS accounts: $awsAccountNumbers")
-      packerBuildConfig <- generatePackerBuildConfig(bake, playbook, awsAccountNumbers).local[CreateImageContext](_.packerConfig).lift[Future]
-      packerConfigFile <- ReaderT.lift[Future, CreateImageContext, Path](Future.fromTry(writePackerConfigToTempFile(packerBuildConfig, bake.recipe.id)))
-      exitCode <- executePacker(PackerInput(bake, playbook, packerConfigFile)).local[CreateImageContext](_.eventBus)
-    } yield BuildResult.fromExitCode(exitCode)
+      packerBuildConfig <- genPackerBuildConfig(bake, playbook, awsAccountNumbers)
+      packerConfigFile <- writePackerBuildConfig(packerBuildConfig)
+      exitCode <- runPacker(PackerInput(bake, playbook, packerConfigFile))
+    } yield {
+      BuildResult.fromExitCode(exitCode)
+    }
 
   }
 
