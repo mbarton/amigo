@@ -1,5 +1,7 @@
 package components
 
+import java.nio.file.Path
+
 import akka.stream.scaladsl.Source
 import akka.typed._
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
@@ -16,7 +18,6 @@ import play.api.i18n.I18nComponents
 import play.api.libs.iteratee.Concurrent
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.routing.Router
-
 import ansible.PlaybookGenerator
 import data.{ Dynamo, Recipes }
 import prism.Prism
@@ -24,7 +25,10 @@ import packer._
 import event.{ ActorSystemWrapper, BakeEvent, Behaviours }
 import schedule.{ BakeScheduler, ScheduledBakeRunner }
 import controllers._
+import models.{ Bake, Recipe }
 import packer.BuildService.CreateImageContext
+
+import scala.concurrent.Future
 
 import router.Routes
 
@@ -82,14 +86,21 @@ class AppComponents(context: Context)
   )
 
   val createImageContext = CreateImageContext(eventBus, packerConfig, wsClient)
-  val createImage = BuildService.createImage(
-    PlaybookGenerator.generatePlaybook,
-    TempFiles.writePlaybookToTempFile,
-    Prism.findAllAWSAccountNumbers,
-    PackerBuildConfigGenerator.generatePackerBuildConfig,
-    TempFiles.writePackerBuildConfigToTempFile,
-    PackerRunner.executePacker
-  ) _
+  val createImage = {
+    val createPlaybook = (recipe: Recipe) =>
+      Future.fromTry(TempFiles.writePlaybookToTempFile(PlaybookGenerator.generatePlaybook(recipe), recipe.id))
+
+    val createPackerBuildConfig = (bake: Bake, playbookFile: Path, awsAccounts: Seq[String]) =>
+      PackerBuildConfigGenerator.generatePackerBuildConfig(bake, playbookFile, awsAccounts)
+        .mapF[Future, Path](packerBuildConfig => Future.fromTry(TempFiles.writePackerBuildConfigToTempFile(packerBuildConfig, bake.recipe.id)))
+
+    BuildService.createImage(
+      createPlaybook,
+      Prism.findAllAWSAccountNumbers,
+      createPackerBuildConfig,
+      PackerRunner.executePacker
+    ) _
+  }
 
   val scheduledBakeRunner = {
     val enabled = identity.stage == "PROD" // don't run scheduled bakes on dev machines
