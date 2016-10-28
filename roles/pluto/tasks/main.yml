@@ -1,7 +1,4 @@
 ---
-- name: Install ansible deps for redhat
-  yum: name=libselinux-python-2.0.94-7.el6 state=present
-
 - name: Get Portal Tar 
   get_url: 
     url: "{{portal_download_path}}/RedHat_Portal_2.0.8-devel.tar"
