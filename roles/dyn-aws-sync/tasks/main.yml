@@ -1,0 +1,6 @@
+- name: Download cli53
+  get_url: url=https://github.com/barnybug/cli53/releases/download/{cli_version}/cli53-linux-amd64 dest=/usr/local/bin/cli53
+
+- name: Change permissions on cli53
+  command: chmod +x /usr/local/bin/cli53  
+
