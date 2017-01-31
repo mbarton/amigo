@@ -1,0 +1,5 @@
+---
+kibana_user: "kibana"
+kibana_apt_repo: "deb https://artifacts.elastic.co/packages/{{ kibana_major_version }}/apt stable main"
+kibana_home: "/usr/share/kibana"
+kibana_config_dir: "/etc/kibana"

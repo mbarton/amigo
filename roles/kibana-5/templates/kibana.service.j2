@@ -1,0 +1,16 @@
+[Unit]
+Description=Kibana
+Requires=elasticsearch.service
+
+[Service]
+ExecStart={{ kibana_home }}/bin/kibana
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=kibana
+User={{ kibana_user }}
+Group={{ kibana_user }}
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+---
+- name: Install apt-transport-https to support https APT downloads
+  apt: name=apt-transport-https state=present
+
+- name: Add Elasticsearch repository key
+  apt_key: url=https://artifacts.elastic.co/GPG-KEY-elasticsearch state=present
+
+- name: Add Kibana repository
+  apt_repository: repo={{ kibana_apt_repo}} state=present
+
+- name: Ensure kibana is installed
+  apt: name=kibana={{ kibana_version }} state=present
+
+- name: Ensure kibana config directory exists
+  file: path={{ kibana_config_dir }} state=directory owner={{ kibana_user }} group={{ kibana_user }}
+
+- name: Install kibana plugins
+  shell: "{{ kibana_home }}/bin/kibana-plugin install {{ item }}"
+  become: true
+  become_user: "{{ kibana_user }}"
+  with_items: "{{ kibana_plugins | default([]) }}"
+
+- name: Ensure X-Path plugin is enabled
+  lineinfile:
+    dest: "{{ kibana_config_dir }}/kibana.yml"
+    line: "xpack.security.enabled: false"
+
+- name: Ensure Kibana service file exists
+  template: src=kibana.service.j2 dest=/etc/systemd/system/kibana.service owner={{ kibana_user }} group={{ kibana_user }} force=yes
