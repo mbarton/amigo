@@ -1,0 +1,4 @@
+---
+curator_major_version: "4"
+curator_version: "4.2.6"
+remove_index_older_than: 7 #days

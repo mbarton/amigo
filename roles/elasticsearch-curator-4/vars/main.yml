@@ -1,0 +1,4 @@
+---
+curator_apt_repo: "deb http://packages.elastic.co/curator/{{ curator_major_version }}/debian stable main"
+curator_home: "/usr/bin/curator"
+curator_config_dir: "/etc/curator"

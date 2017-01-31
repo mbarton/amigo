@@ -1,0 +1,29 @@
+---
+- name: Install apt-transport-https to support https APT downloads
+  apt: name=apt-transport-https state=present
+
+- name: Add Elasticsearch repository key
+  apt_key: url=https://packages.elastic.co/GPG-KEY-elasticsearch state=present
+
+- name: Add Curator repository
+  apt_repository: repo={{ curator_apt_repo}} state=present
+
+- name: Ensure Curator is installed
+  apt: name=elasticsearch-curator={{ curator_version }} state=present
+
+- name: Ensure Curator config directory exists
+  file: path={{ curator_config_dir }} state=directory
+
+- name: Ensure Curator configuration file exists
+  copy: src=curator.yml dest={{ curator_config_dir }}/curator.yml mode=0644 force=yes
+
+- name: Ensure config for removing old indexes job exists
+  template: src=delete-old-indexes.yml.j2 dest={{ curator_config_dir }}/delete-old-indexes.yml.yml mode=0644 force=yes
+
+- name: Setup cron job
+  cron:
+    name: "Delete old indexes"
+    minute: "30"
+    hour: "0"
+    job: "/usr/bin/curator --config {{ curator_config_dir }}/curator.yml {{ curator_config_dir }}/delete-old-indexes.yml"
+
