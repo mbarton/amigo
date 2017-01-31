@@ -1,6 +1,16 @@
 ---
+- name: set download url for version < 5
+  set_fact:
+    download_url: "{{ logstash_url_old }}"
+    when: logstash_major_version|int < 5
+
+- name: set download url for version >= 5
+  set_fact:
+    download_url: "{{ logstash_url }}"
+    when: logstash_major_version|int >= 5
+
 - name: Download and extract Logstash
-  unarchive: src=https://download.elastic.co/logstash/logstash/logstash-{{logstash_version}}.tar.gz dest=/opt/ copy=no
+  unarchive: src={{ download_url }} dest=/opt/ copy=no
 
 - name: Create softlink for Logstash
   file: src=/opt/logstash-{{logstash_version}} dest=/opt/logstash state=link

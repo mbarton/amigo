@@ -1,4 +1,7 @@
 ---
+logstash_major_version: 1
 logstash_version: 1.5.6
 logstash_user: logstash
 logstash_config_file: /etc/logstash.conf
+logstash_url: https://artifacts.elastic.co/downloads/logstash/logstash-{{logstash_version}}.tar.gz
+logstash_url_old: https://download.elastic.co/logstash/logstash/logstash-{{logstash_version}}.tar.gz
