@@ -1,0 +1,19 @@
+---
+- name: Create user for oauth_proxy
+  user: name={{op_user}} system=yes createhome=yes
+
+- name: Download and extract oauth_proxy
+  unarchive: src={{ op_download_url }} dest=/opt/ copy=no
+
+- name: Create softlink for oauth_proxy
+  file: src=/opt/{{ op_archive_name }} dest={{ op_home }} state=link
+
+- name: Ensure oauth_proxy config directory exists
+  file: path={{ op_config_dir }} state=directory owner={{ op_user }} group={{ op_user }}
+
+- name: Ensure oauth_proxy configuration file template exists
+  copy: src=oauth_proxy.template.conf dest={{ op_config_dir }}/oauth_proxy.template.config owner={{ op_user }} group={{ op_user }} mode=0644 force=yes
+
+- name: Ensure oauth_proxy service file exists
+  template: src=oauth_proxy.service.j2 dest=/etc/systemd/system/oauth_proxy.service owner={{ op_user }} group={{ op_user }} force=yes
+

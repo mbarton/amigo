@@ -1,0 +1,17 @@
+[Unit]
+Description=OAuth2 proxy
+After=syslog.target
+
+[Service]
+EnvironmentFile=-{{ op_config_dir }}/oauth2-proxy.conf
+User={{ op_user }}
+Group={{ op_user }}
+Type=simple
+ExecStart={{ op_home }}/oauth2_proxy $OPTS
+KillSignal=SIGINT
+Restart=on-failure
+StandardError=syslog
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target
