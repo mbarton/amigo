@@ -1,0 +1,6 @@
+---
+- name: Add golang repository
+  apt_repository: repo={{ go_apt_repo }} state=present
+
+- name: ensure golang is installed
+  apt: name=golang-{{ go_version }} state=present
